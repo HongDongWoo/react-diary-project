@@ -1,41 +1,105 @@
-import { useState } from "react";
+import { useState, useReducer, useRef, createContext } from "react";
 import "./App.css";
 import Home from "./pages/Home";
 import New from "./pages/New";
 import Dairy from "./pages/Dairy";
 import NotFound from "./pages/NotFound";
+import Button from "./components/Button";
+import Header from "./components/Header";
+import Edit from "./pages/Edit";
 import { Routes, Route, Link, useNavigate } from "react-router-dom";
 import { getEmotionImage } from "./util/get-emotion-image";
 
-// 1. "/" : 모든 일기를 조회하는 home페이지
-// 2. "/new": 새로운 일기를 작성하는 new 페이지
-// 3. "/diary": 일기 상세 페이지
-function App() {
-  const nav = useNavigate();
+const mockData = [
+  {
+    id: 1,
+    createdDate: new Date("2026-05-05").getTime(),
+    emotionId: 1,
+    content: "1번 일기장",
+  },
+  {
+    id: 2,
+    createdDate: new Date("2026-05-03").getTime(),
+    emotionId: 2,
+    content: "2번 일기장",
+  },
+  {
+    id: 3,
+    createdDate: new Date("2026-04-03").getTime(),
+    emotionId: 3,
+    content: "3번 일기장",
+  },
+];
+function reducer(state, action) {
+  switch (action.type) {
+    case "CREATE":
+      return [action.data, ...state];
+    case "UPDATE":
+      return state.map((item) =>
+        String(item.id) === String(action.data.id) ? action.data : item,
+      );
+    case "DELETE":
+      return state.filter((item) => String(item.id) !== String(action.data.id));
+    default:
+      return state;
+  }
+}
 
-  const onClickButton = () => {
-    nav("/new");
+export const DairyStateContext = createContext();
+export const DairyDispatchContext = createContext();
+
+function App() {
+  const [data, dispatch] = useReducer(reducer, mockData);
+  const idRef = useRef(3);
+
+  // 새로운 일기 추가
+  const onCreate = (createdDate, emotionId, content) => {
+    dispatch({
+      type: "CREATE",
+      data: {
+        id: idRef.current,
+        createdDate,
+        emotionId,
+        content,
+      },
+    });
   };
 
+  // 기존 일기 수정
+  const onUpdate = (id, createdDate, emotionId, content) => {
+    dispatch({
+      type: "UPDATE",
+      data: {
+        id,
+        createdDate,
+        emotionId,
+        content,
+      },
+    });
+  };
+
+  // 일기 삭제
+  const onDelete = (id) => {
+    dispatch({
+      type: "DELETE",
+      data: {
+        id,
+      },
+    });
+  };
   return (
     <>
-      <div>
-        <img src={getEmotionImage(1)} />
-        <img src={getEmotionImage(2)} />
-        <img src={getEmotionImage(3)} />
-        <img src={getEmotionImage(4)} />
-        <img src={getEmotionImage(5)} />
-      </div>
-      <Link to={"/"}>Home</Link>
-      <Link to={"/new"}>New</Link>
-      <Link to={"/dairy"}>Diary</Link>
-      <button onClick={onClickButton}>New 페이지로 이동</button>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/new" element={<New />} />
-        <Route path="/dairy/:id" element={<Dairy />} />
-        <Route path="/*" element={<NotFound />} />
-      </Routes>
+      <DairyStateContext.Provider value={data}>
+        <DairyDispatchContext.Provider value={{ onCreate, onUpdate, onDelete }}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/new" element={<New />} />
+            <Route path="/dairy/:id" element={<Dairy />} />
+            <Route path="/edit/:id" element={<Edit />} />
+            <Route path="/*" element={<NotFound />} />
+          </Routes>
+        </DairyDispatchContext.Provider>
+      </DairyStateContext.Provider>
     </>
   );
 }
